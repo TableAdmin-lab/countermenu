@@ -232,7 +232,9 @@
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
             }
 
-            const apiKey = "AIzaSyAXpLvaAGgI4JRdKx5XD9ERUTilaohR3Rs"; // API key managed by environment
+            // API key is set to an empty string. The environment provides the key at runtime.
+            // If deploying via GitHub Actions, set a Secret named GEMINI_API_KEY.
+            const apiKey = ""; 
             
             const htmlRoot = document.documentElement;
             const themeToggle = document.getElementById('themeToggle');
@@ -368,7 +370,7 @@
                 if (!uploadedFiles.length) return;
                 setLoading(true); masterData = [];
                 try {
-                    const modelName = "gemini-2.5-flash"; 
+                    const modelName = "gemini-2.5-flash-preview-09-2025"; 
                     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
                     
                     for (let i = 0; i < uploadedFiles.length; i++) {
@@ -389,7 +391,6 @@
                         const rawText = res.candidates?.[0]?.content?.parts?.[0]?.text;
                         if (!rawText) throw new Error("Empty response from AI engine.");
 
-                        // Robust JSON extraction from the string
                         const start = rawText.indexOf('{');
                         const end = rawText.lastIndexOf('}') + 1;
                         if (start === -1 || end === 0) throw new Error("Could not find valid data structure in the response.");
