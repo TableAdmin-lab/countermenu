@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MenuScan AI - Menu to Data</title>
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .loader {
+            border: 3px solid rgba(150, 150, 150, 0.2);
+            border-radius: 50%;
+            border-top: 3px solid #00B8E6;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .drop-zone--over {
+            border-color: #00B8E6;
+            background-color: rgba(0, 184, 230, 0.05);
+        }
+
+        .glass-card {
+            backdrop-filter: blur(12px);
+        }
+
+        .file-item {
+            transition: all 0.2s ease;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #262626;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .modal-enter {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-white">
+
+    <div class="max-w-[1300px] mx-auto px-6 py-12">
+        <!-- Header -->
+        <header class="mb-16 relative">
+            <div class="absolute top-0 right-0 flex items-center gap-3">
+                <button id="clearAllBtn" class="px-6 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg shadow-red-500/30 text-xs font-black uppercase tracking-widest flex items-center gap-2 border-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Clear all
+                </button>
+                <button id="themeToggle" class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-cyan hover:scale-110 transition-all shadow-sm">
+                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 5a7 7 0 100 14 7 7 0 000-14z" />
+                    </svg>
+                    <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                    </svg>
+                </button>
+            </div>
+
+            <h1 class="text-5xl md:text-6xl font-extrabold tracking-tighter text-slate-900 dark:text-white mb-4 leading-tight">
+                Revolutionise your <br><span class="text-cyan">menu management</span>
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl leading-relaxed">
+                Aggregated AI-powered system that transforms multi-page PDFs and images into structured data.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            <!-- Left Side -->
+            <div class="lg:col-span-4 space-y-6">
+                <div id="dropZone" class="relative border border-slate-200 dark:border-slate-800 rounded-3xl p-8 transition-all duration-300 ease-in-out flex flex-col items-center justify-center bg-white dark:bg-[#0A0A0A] cursor-pointer hover:border-cyan group shadow-sm">
+                    <input type="file" id="fileInput" class="hidden" accept="image/*,application/pdf" multiple>
+                    <div id="uploadPrompt" class="text-center">
+                        <div class="w-16 h-16 bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-cyan rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 group-hover:bg-cyan group-hover:text-black transition-all duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <p class="text-base font-semibold text-slate-700 dark:text-white">Upload Menus</p>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Images or multi-page PDFs</p>
+                    </div>
+                </div>
+
+                <!-- Files List -->
+                <div id="filesList" class="hidden space-y-3 max-h-64 overflow-y-auto pr-2"></div>
+
+                <button id="analyzeBtn" disabled class="w-full py-4 bg-cyan text-black rounded-2xl font-bold text-lg shadow-xl shadow-cyan/10 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 transition-all flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98]">
+                    <span id="btnText">Extract All Data</span>
+                    <div id="btnLoader" class="loader hidden border-black/20 border-t-black"></div>
+                </button>
+
+                <div id="statusMessage" class="hidden p-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest border bg-white dark:bg-black/40 border-slate-200 dark:border-slate-800"></div>
+            </div>
+
+            <!-- Right Side -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                <!-- Filters -->
+                <div id="controlsBar" class="hidden glass-card bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 rounded-3xl grid grid-cols-1 md:grid-cols-3 gap-6 shadow-sm">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2 block">Category Filter</label>
+                        <input type="text" id="categoryFilter" placeholder="Appetizers..." class="w-full bg-slate-50 dark:bg-black text-slate-900 dark:text-white px-4 py-2.5 text-sm border border-slate-200 dark:border-slate-800 rounded-xl focus:border-cyan outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2 block">Product Filter</label>
+                        <input type="text" id="productFilter" placeholder="Burger name..." class="w-full bg-slate-50 dark:bg-black text-slate-900 dark:text-white px-4 py-2.5 text-sm border border-slate-200 dark:border-slate-800 rounded-xl focus:border-cyan outline-none transition-all">
+                    </div>
+                    <div class="flex gap-3 items-end">
+                        <div class="flex-1">
+                            <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2 block">Page Size</label>
+                            <select id="pageSizeSelect" class="w-full bg-slate-50 dark:bg-black text-slate-900 dark:text-white px-4 py-2.5 text-sm border border-slate-200 dark:border-slate-800 rounded-xl focus:border-cyan outline-none appearance-none cursor-pointer">
+                                <option value="25">25 rows</option>
+                                <option value="50">50 rows</option>
+                                <option value="100">100 rows</option>
+                            </select>
+                        </div>
+                        <button id="excelBtn" class="py-2.5 px-6 bg-cyan text-black text-xs font-bold rounded-xl hover:opacity-90 transition-all shadow-lg uppercase">Export</button>
+                    </div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="glass-card bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden flex-1 min-h-[500px] flex flex-col shadow-sm">
+                    <div class="flex-1 overflow-x-auto">
+                        <table id="resultsTable" class="w-full text-sm text-left hidden">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-black/50 text-slate-400 dark:text-slate-500 uppercase text-[10px] font-bold">
+                                    <th class="px-8 py-5">Category</th>
+                                    <th class="px-8 py-5">Product Name</th>
+                                    <th class="px-8 py-5">Variant</th>
+                                    <th class="px-8 py-5 text-right">Price</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800/50"></tbody>
+                        </table>
+
+                        <div id="emptyState" class="flex flex-col items-center justify-center h-full py-40 text-slate-300 dark:text-slate-600 px-6 text-center">
+                            <div class="w-20 h-20 bg-slate-100 dark:bg-slate-900 rounded-3xl flex items-center justify-center mb-6 opacity-30">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                            </div>
+                            <p class="text-xl font-bold">System Standby</p>
+                            <p class="text-sm mt-2 leading-relaxed">
+                                Upload one or more documents to begin extraction.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="paginationFooter" class="hidden px-8 py-6 bg-slate-50 dark:bg-black/50 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-6">
+                        <p id="pageInfo" class="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider"></p>
+                        <div class="flex items-center gap-3">
+                            <button id="prevPage" class="p-3 rounded-xl bg-white dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-800 disabled:opacity-20 hover:text-cyan transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <button id="nextPage" class="p-3 rounded-xl bg-white dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-800 disabled:opacity-20 hover:text-cyan transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="warningModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-md p-4">
+        <div class="bg-white dark:bg-[#0F0F0F] rounded-[2.5rem] max-w-sm w-full p-10 shadow-2xl modal-enter border border-slate-100 dark:border-slate-800">
+            <h3 class="text-2xl font-black text-slate-900 dark:text-white text-center mb-4 uppercase tracking-tighter text-nowrap">Verification Required</h3>
+            <p class="text-slate-500 text-center text-sm mb-10 leading-relaxed font-medium">
+                AI extraction can vary across multiple files. Please audit all items to ensure accuracy.
+            </p>
+            <div class="flex flex-col gap-4">
+                <button id="confirmDownload" class="w-full py-4 bg-cyan text-black rounded-2xl font-bold uppercase tracking-widest text-xs hover:scale-[1.02] transition-all">
+                    Acknowledge & Export
+                </button>
+                <button id="cancelDownload" class="w-full py-4 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:text-slate-900 dark:hover:text-white transition-all">
+                    Return to Audit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const initApp = () => {
+            if (typeof tailwind !== 'undefined') {
+                tailwind.config = {
+                    darkMode: 'class',
+                    theme: { extend: { colors: { cyan: { DEFAULT: '#00B8E6', hover: '#00A3CC' } } } }
+                };
+            }
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+            }
+
+            const apiKey = "AIzaSyAXpLvaAGgI4JRdKx5XD9ERUTilaohR3Rs"; // API key managed by environment
+            
+            const htmlRoot = document.documentElement;
+            const themeToggle = document.getElementById('themeToggle');
+            const sunIcon = document.getElementById('sunIcon');
+            const moonIcon = document.getElementById('moonIcon');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            const resultsTable = document.getElementById('resultsTable');
+            const tableBody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+            const paginationFooter = document.getElementById('paginationFooter');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const productFilter = document.getElementById('productFilter');
+            const pageSizeSelect = document.getElementById('pageSizeSelect');
+            const warningModal = document.getElementById('warningModal');
+
+            let uploadedFiles = []; 
+            let masterData = [];
+            let filteredData = [];
+            let currentPage = 1;
+            let rowsPerPage = 25;
+
+            themeToggle.addEventListener('click', () => {
+                htmlRoot.classList.toggle('dark');
+                const isDark = htmlRoot.classList.contains('dark');
+                sunIcon.classList.toggle('hidden', isDark);
+                moonIcon.classList.toggle('hidden', !isDark);
+            });
+
+            clearAllBtn.addEventListener('click', () => {
+                uploadedFiles = []; masterData = []; filteredData = []; currentPage = 1;
+                renderFilesList(); renderTable(); analyzeBtn.disabled = true;
+                statusMessage.classList.add('hidden');
+                document.getElementById('fileInput').value = "";
+                categoryFilter.value = "";
+                productFilter.value = "";
+            });
+
+            document.getElementById('dropZone').addEventListener('click', () => document.getElementById('fileInput').click());
+            document.getElementById('dropZone').addEventListener('dragover', (e) => { e.preventDefault(); e.currentTarget.classList.add('drop-zone--over'); });
+            document.getElementById('dropZone').addEventListener('dragleave', (e) => e.currentTarget.classList.remove('drop-zone--over'));
+            document.getElementById('dropZone').addEventListener('drop', async (e) => {
+                e.preventDefault(); e.currentTarget.classList.remove('drop-zone--over');
+                if (e.dataTransfer.files.length) await handleFiles(e.dataTransfer.files);
+            });
+            document.getElementById('fileInput').addEventListener('change', async (e) => { if (e.target.files.length) await handleFiles(e.target.files); });
+
+            async function handleFiles(files) {
+                showStatus("Preparing documents...", "info");
+                for (let file of files) {
+                    try {
+                        if (file.type === 'application/pdf') {
+                            const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                                showStatus(`Processing ${file.name}: Page ${pageNum} of ${pdf.numPages}...`, "info");
+                                const page = await pdf.getPage(pageNum);
+                                const viewport = page.getViewport({ scale: 2.0 });
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                canvas.height = viewport.height; 
+                                canvas.width = viewport.width;
+                                await page.render({ canvasContext: ctx, viewport }).promise;
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                                uploadedFiles.push({ 
+                                    base64: dataUrl.split(',')[1], 
+                                    name: pdf.numPages > 1 ? `${file.name} (Pg ${pageNum})` : file.name, 
+                                    id: Math.random().toString(36).substring(7) 
+                                });
+                            }
+                        } else {
+                            const dataUrl = await new Promise(r => {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    const img = new Image();
+                                    img.onload = () => {
+                                        const c = document.createElement('canvas');
+                                        const max = 1800; let w = img.width, h = img.height;
+                                        if (w > max) { h *= max/w; w = max; }
+                                        c.width = w; c.height = h;
+                                        c.getContext('2d').drawImage(img, 0, 0, w, h);
+                                        r(c.toDataURL('image/jpeg', 0.85));
+                                    };
+                                    img.src = e.target.result;
+                                };
+                                reader.readAsDataURL(file);
+                            });
+                            uploadedFiles.push({ base64: dataUrl.split(',')[1], name: file.name, id: Math.random().toString(36).substring(7) });
+                        }
+                    } catch (err) { 
+                        console.error(err); 
+                        showStatus(`Error processing ${file.name}`, "error");
+                    }
+                }
+                renderFilesList();
+                analyzeBtn.disabled = uploadedFiles.length === 0;
+                showStatus(`${uploadedFiles.length} page(s) ready.`, "success");
+            }
+
+            function renderFilesList() {
+                const list = document.getElementById('filesList');
+                list.innerHTML = ""; list.classList.toggle('hidden', !uploadedFiles.length);
+                uploadedFiles.forEach(f => {
+                    const d = document.createElement('div');
+                    d.className = "flex items-center justify-between bg-white dark:bg-[#0F0F0F] p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs";
+                    d.innerHTML = `<span class="truncate pr-2 font-medium">${f.name}</span><button class="text-red-500 font-bold hover:text-red-400">REMOVE</button>`;
+                    d.querySelector('button').onclick = () => {
+                        uploadedFiles = uploadedFiles.filter(x => x.id !== f.id); renderFilesList();
+                        analyzeBtn.disabled = !uploadedFiles.length;
+                    };
+                    list.appendChild(d);
+                });
+            }
+
+            async function fetchWithRetry(url, options, retries = 5, backoff = 1000) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        const errorBody = await response.json().catch(() => ({}));
+                        throw new Error(errorBody.error?.message || `API request failed with status ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (err) {
+                    if (retries > 0) {
+                        await new Promise(r => setTimeout(r, backoff));
+                        return fetchWithRetry(url, options, retries - 1, backoff * 2);
+                    }
+                    throw err;
+                }
+            }
+
+            analyzeBtn.addEventListener('click', async () => {
+                if (!uploadedFiles.length) return;
+                setLoading(true); masterData = [];
+                try {
+                    const modelName = "gemini-2.5-flash"; 
+                    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+                    
+                    for (let i = 0; i < uploadedFiles.length; i++) {
+                        showStatus(`Analyzing document ${i + 1}/${uploadedFiles.length}...`, "info");
+                        const payload = {
+                            contents: [{ parts: [
+                                { text: "Act as a specialized menu parser. Extract every single item from the provided image and format as a valid JSON object. Structure: { \"items\": [ { \"category\": \"string\", \"product_name\": \"string\", \"variant\": \"string\", \"selling_price\": \"string\" } ] }. Respond ONLY with the JSON block. No markdown, no commentary." },
+                                { inlineData: { mimeType: "image/jpeg", data: uploadedFiles[i].base64 } }
+                            ] }]
+                        };
+
+                        const res = await fetchWithRetry(endpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const rawText = res.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!rawText) throw new Error("Empty response from AI engine.");
+
+                        // Robust JSON extraction from the string
+                        const start = rawText.indexOf('{');
+                        const end = rawText.lastIndexOf('}') + 1;
+                        if (start === -1 || end === 0) throw new Error("Could not find valid data structure in the response.");
+
+                        const jsonString = rawText.substring(start, end);
+                        try {
+                            const parsed = JSON.parse(jsonString);
+                            const items = parsed.items || (Array.isArray(parsed) ? parsed : []);
+                            masterData.push(...items);
+                        } catch (e) { 
+                            console.error("JSON Parsing Error", e, jsonString);
+                            throw new Error("Data formatting error. The AI output was incomplete.");
+                        }
+                    }
+                    applyFilters();
+                    showStatus(`Extracted ${masterData.length} items.`, "success");
+                } catch (err) { 
+                    showStatus(`Extraction Failed: ${err.message}`, "error"); 
+                } finally { 
+                    setLoading(false); 
+                }
+            });
+
+            function applyFilters() {
+                const cat = categoryFilter.value.toLowerCase();
+                const prod = productFilter.value.toLowerCase();
+                filteredData = masterData.filter(i => 
+                    (i.category||"").toLowerCase().includes(cat) && 
+                    (i.product_name||"").toLowerCase().includes(prod)
+                );
+                currentPage = 1; renderTable();
+            }
+
+            function renderTable() {
+                tableBody.innerHTML = ""; const hasData = filteredData.length > 0;
+                resultsTable.classList.toggle('hidden', !hasData); emptyState.classList.toggle('hidden', hasData);
+                document.getElementById('controlsBar').classList.toggle('hidden', !masterData.length);
+                paginationFooter.classList.toggle('hidden', !hasData);
+                
+                if (hasData) {
+                    const start = (currentPage - 1) * rowsPerPage;
+                    const end = start + rowsPerPage;
+                    filteredData.slice(start, end).forEach(i => {
+                        const r = document.createElement('tr');
+                        r.className = "hover:bg-slate-50 dark:hover:bg-white/5 transition-colors";
+                        r.innerHTML = `
+                            <td class="px-8 py-4 text-slate-500 dark:text-slate-400 font-medium">${i.category||'-'}</td>
+                            <td class="px-8 py-4 font-bold text-slate-900 dark:text-white">${i.product_name||'-'}</td>
+                            <td class="px-8 py-4 text-xs italic text-slate-400 dark:text-slate-500">${i.variant||'-'}</td>
+                            <td class="px-8 py-4 text-cyan font-black text-right">${i.selling_price||'-'}</td>
+                        `;
+                        tableBody.appendChild(r);
+                    });
+                    document.getElementById('pageInfo').textContent = `${start + 1}-${Math.min(end, filteredData.length)} of ${filteredData.length}`;
+                    document.getElementById('prevPage').disabled = currentPage === 1;
+                    document.getElementById('nextPage').disabled = end >= filteredData.length;
+                }
+            }
+
+            categoryFilter.oninput = applyFilters; productFilter.oninput = applyFilters;
+            pageSizeSelect.onchange = (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; renderTable(); };
+            document.getElementById('prevPage').onclick = () => { if (currentPage > 1) { currentPage--; renderTable(); } };
+            document.getElementById('nextPage').onclick = () => { if (currentPage * rowsPerPage < filteredData.length) { currentPage++; renderTable(); } };
+            
+            document.getElementById('excelBtn').onclick = () => { if (filteredData.length) warningModal.classList.remove('hidden'); };
+            document.getElementById('cancelDownload').onclick = () => warningModal.classList.add('hidden');
+            document.getElementById('confirmDownload').onclick = () => {
+                warningModal.classList.add('hidden');
+                const clean = (v) => v ? v.toString().replace(/[^0-9.]/g, "") : "";
+                const dataRows = [["Category", "Product Name", "Variant", "Price"], ...filteredData.map(i => [i.category, i.product_name, i.variant, clean(i.selling_price)])];
+                const ws = XLSX.utils.aoa_to_sheet(dataRows);
+                const wb = XLSX.utils.book_new(); 
+                XLSX.utils.book_append_sheet(wb, ws, "Menu Audit");
+                XLSX.writeFile(wb, "MenuScan_Export.xlsx");
+            };
+
+            function setLoading(isLoading) {
+                analyzeBtn.disabled = isLoading;
+                document.getElementById('btnText').textContent = isLoading ? "Auditing System..." : "Extract All Data";
+                document.getElementById('btnLoader').classList.toggle('hidden', !isLoading);
+                clearAllBtn.disabled = isLoading;
+            }
+
+            function showStatus(msg, type) {
+                statusMessage.textContent = msg; statusMessage.classList.remove('hidden');
+                statusMessage.className = `p-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
+                    type === 'error' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 
+                    type === 'success' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                    'bg-cyan/5 text-cyan border-cyan/20'
+                }`;
+            }
+        };
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
