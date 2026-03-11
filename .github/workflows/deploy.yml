@@ -17,7 +17,7 @@ jobs:
 
       - name: Inject API Key from Secrets
         run: |
-          sed -i 's/REPLACE_ME_WITH_GEMINI_API_KEY/${{ secrets.GEMINI_API_KEY }}/g' MenuScan_Ai_Extractor.html
+          sed -i 's/REPLACE_ME_WITH_GEMINI_API_KEY/${{ secrets.GEMINI_API_KEY }}/g' index.html
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
