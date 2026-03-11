@@ -232,9 +232,11 @@
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
             }
 
-            // API key is set to an empty string. The environment provides the key at runtime.
-            // If deploying via GitHub Actions, set a Secret named GEMINI_API_KEY.
-            const apiKey = ""; 
+            /**
+             * NOTE: Do not manually edit this key.
+             * The GitHub Action will replace this placeholder with your GEMINI_API_KEY secret.
+             */
+            const apiKey = "REPLACE_ME_WITH_GEMINI_API_KEY"; 
             
             const htmlRoot = document.documentElement;
             const themeToggle = document.getElementById('themeToggle');
@@ -349,18 +351,21 @@
                 });
             }
 
-            async function fetchWithRetry(url, options, retries = 5, backoff = 1000) {
+            async function fetchWithRetry(url, options, retries = 5) {
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                const attemptIdx = 5 - retries;
+                
                 try {
                     const response = await fetch(url, options);
                     if (!response.ok) {
                         const errorBody = await response.json().catch(() => ({}));
-                        throw new Error(errorBody.error?.message || `API request failed with status ${response.status}`);
+                        throw new Error(errorBody.error?.message || `API error: ${response.status}`);
                     }
                     return await response.json();
                 } catch (err) {
                     if (retries > 0) {
-                        await new Promise(r => setTimeout(r, backoff));
-                        return fetchWithRetry(url, options, retries - 1, backoff * 2);
+                        await new Promise(r => setTimeout(r, delays[attemptIdx]));
+                        return fetchWithRetry(url, options, retries - 1);
                     }
                     throw err;
                 }
@@ -375,11 +380,15 @@
                     
                     for (let i = 0; i < uploadedFiles.length; i++) {
                         showStatus(`Analyzing document ${i + 1}/${uploadedFiles.length}...`, "info");
+                        
                         const payload = {
-                            contents: [{ parts: [
-                                { text: "Act as a specialized menu parser. Extract every single item from the provided image and format as a valid JSON object. Structure: { \"items\": [ { \"category\": \"string\", \"product_name\": \"string\", \"variant\": \"string\", \"selling_price\": \"string\" } ] }. Respond ONLY with the JSON block. No markdown, no commentary." },
-                                { inlineData: { mimeType: "image/jpeg", data: uploadedFiles[i].base64 } }
-                            ] }]
+                            contents: [{ 
+                                role: "user",
+                                parts: [
+                                    { text: "Act as a specialized menu parser. Extract every single item from the provided image and format as a valid JSON object. Structure: { \"items\": [ { \"category\": \"string\", \"product_name\": \"string\", \"variant\": \"string\", \"selling_price\": \"string\" } ] }. Respond ONLY with the JSON block. No markdown, no commentary." },
+                                    { inlineData: { mimeType: "image/jpeg", data: uploadedFiles[i].base64 } }
+                                ] 
+                            }]
                         };
 
                         const res = await fetchWithRetry(endpoint, {
