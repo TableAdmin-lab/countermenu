@@ -1,21 +1,16 @@
-name: Build and Deploy
+name: Deploy
 on:
   push:
-    branches: [ main ]
-
+    branches: [main]
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Inject API Key
-        run: |
-          sed -i 's/REPLACE_ME_WITH_GEMINI_API_KEY/${{ secrets.GEMINI_API_KEY }}/g' index.html
-
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - uses: actions/checkout@v4
+      - name: Inject Key
+        run: sed -i 's/REPLACE_ME_WITH_GEMINI_API_KEY/${{ secrets.GEMINI_API_KEY }}/g' index.html
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          folder: . # The folder where your index.html is located
-          branch: gh-pages # The branch the action will deploy to
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
