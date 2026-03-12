@@ -375,7 +375,7 @@
                 if (!uploadedFiles.length) return;
                 setLoading(true); masterData = [];
                 try {
-                    const modelName = "gemini-2.5-flash-preview-09-2025"; 
+                    const modelName = "gemini-2.5-flash"; 
                     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
                     
                     for (let i = 0; i < uploadedFiles.length; i++) {
